@@ -1,0 +1,17 @@
+use lib 'lib';
+use utf8;
+use Text::WagnerFischer::Armenian qw{ distance };
+use Test::More tests => 12;
+binmode STDOUT, ":utf8";
+is( distance("կինք", "կին"), 0.5, "Armenian suffix" );
+is( distance("զկին", "կին"), 0.5, "Armenian prefix" );
+is( distance("Æble", "Able"), 1, "normal substitution" );
+is( distance("Able", "ble"), 1, "normal deletion" );
+is( distance("able", "able"), 0, "identical strings" );
+is( distance("զձեռն", "ձեռնն"), 1, "Armenian prefix + suffix" );
+is( distance("ձեռն", "ձեռան"), 1, "normal Arm insertion" );
+is( distance("աղօթեալ", "ախօթեալք"), 1.5, "Armenian suffix + substitution" );
+is( distance("զզօրս", "զորս"), 1, "Armenian prefix + vocalic equivalence" );
+is( distance("ձեռն", "Ձեռն"), 0.25, "case mismatch for Armenian words" );
+is( distance("Able", "able"), 1, "case mismatch for normal words" );
+is( distance("apple", "a*ple"), 1, "Pattern metacharacters are safe" );
