@@ -1,14 +1,13 @@
 package Text::WagnerFischer::Armenian;
-use base qw( Text::WagnerFischer );
 
 =head1 NAME
 
-Text::WagnerFischer::Armenian - a subclass of Text::WagnerFischer for Armenian-language strings
+Text::WagnerFischer::Armenian - a variation on Text::WagnerFischer for Armenian-language strings
 
 =head1 SYNOPSIS
 
  use Text::WagnerFischer::Armenian qw( distance );
- use utf8;
+ use utf8;  # for the Armenian characters in the source code
 
  print distance("ձեռն", "ձեռան") . "\n";  
     # "dzerrn -> dzerran"; prints 1
@@ -22,14 +21,12 @@ Text::WagnerFischer::Armenian - a subclass of Text::WagnerFischer for Armenian-l
     # "zors" -> "zorsn, Zors, zzorsn" 
     # prints "0.5 0.25 1"
 
- # Change the cost of a letter case substitution to 1
- my $edit_values = [ ( 0, 1, 1, 1, 0.5, 0.5, 1 ),  # string-beginning values
-                     ( 0, 1, 1, 1, 0.5, 1, 1 ),  # string-beginning values
-                     ( 0, 1, 1, 1, 0.5, 1, 0.5 ),  # string-beginning values
-                   ];
-print distance( "ձեռն", "Ձեռն" ) . "\n";
-    # prints 1
-=DESCRIPTION
+ # Change the cost of a letter case mismatch to 1
+ my $edit_values = [ 0, 1, 1, 1, 0.5, 0.5, 0.5 ],  
+ print distance( $edit_values, "ձեռն", "Ձեռն" ) . "\n";
+    # "dzerrn" -> "DZerrn"; prints 1
+
+=head1 DESCRIPTION
 
 This module implements the Wagner-Fischer distance algorithm modified
 for Armenian strings.  The Armenian language has a number of
@@ -52,80 +49,55 @@ w( x, y ) = | c: x != y          (cost for letter mismatch)
             | g: x = (n|k'|s|d) && y = - (or vice versa)
             \          (cost for grammatic suffix)
 
-These distance weights can be changed, although the prefix/suffix part
-of the algorithm currently requires that the distance weights be
-specified three times (for the start, middle, and end of the string.)
-The weight arrays can be passed in as the first argument to distance.  
-
-=head1 BUGS
-
-There are many cases of Armenian word equivalence that are not
-perfectly handled by this; it is meant to be a rough heuristic for
-comparing transcriptions of handwriting.  In particular, multi-letter
-suffixes, and some orthographic equivalence e.g "o" -> "aw", are not
-handled at all.
-
-=head1 AUTHOR
-
-Tara L Andrews, L<aurum@cpan.org>
-
-=head1 SEE ALSO
-
-"Text::WagnerFischer"
 
 =cut
 
+use strict;
+use warnings;
+no warnings 'redefine';
+use Exporter 'import';
+use Text::WagnerFischer;
 use utf8;
-BEGIN
-{
-    use strict;
-    use vars qw( @EXPORT_OK $VERSION %VocalicEquivalence @Prefixes @Suffixes 
-                 $REFC $REFC_start $REFC_end );
-    no warnings 'redefine';
 
-    $VERSION = "0.01";
+my( %VocalicEquivalence, @Prefixes, @Suffixes, $REFC );
 
-    *_min = \&Text::WagnerFischer::_min;
-    @EXPORT_OK = qw( &distance );
-    
-    #
-    # Set new default costs:
-    #
-    # WagnerFischer   :  equal, insert/delete, mismatch, 
-    # LetterCaseEquiv :  same word, case mismatch
-    # VocalicEquiv    :  letter that changed with pronunciation shift
-    # PrefixAddDrop   :  same word, one has prefix e.g. preposition form "y-"
-    # SuffixAddDrop   :  same word, one has suffix e.g. definite article "-n"
-    $REFC = [ 0, 1, 1,  0.25, 0.5, 1, 1 ];   # mid-word: no pre/suffix
-    $REFC_start = [ 0, 1, 1,  0.25, 0.5, 0.5, 1 ]; # there may be a prefix
-    $REFC_end = [ 0, 1, 1,  0.25, 0.5, 1, 0.5 ];   # there may be a suffix
+our $VERSION = "0.02";
+our @EXPORT_OK = qw( &distance &am_lc );
 
-    %VocalicEquivalence = (
-	'բ' => [ 'պ' ],
-	'գ' => [ 'ք', 'կ' ],
-	'դ' => [ 'տ' ],
-	'ե' => [ 'է' ],
-	'է' => [ 'ե' ],
-	'թ' => [ 'տ' ],
-	'լ' => [ 'ղ' ],
-	'կ' => [ 'գ', 'ք' ],
-	'ղ' => [ 'լ' ],
-	'ո' => [ 'օ' ],
-	'պ' => [ 'բ', 'փ' ],
-	'ռ' => [ 'ր' ],
-	'վ' => [ 'ւ' ],
-	'տ' => [ 'դ', 'թ'],
-	'ր' => [ 'ռ' ],
-	'ւ' => [ 'վ' ],
-	'փ' => [ 'պ', 'ֆ' ],
-	'ք' => [ 'գ', 'կ' ],
-	'օ' => [ 'ո' ],
-	'ֆ' => [ 'փ' ],
-            );
+# Set new default costs:
+#
+# WagnerFischer   :  equal, insert/delete, mismatch, 
+# LetterCaseEquiv :  same word, case mismatch
+# VocalicEquiv    :  letter that changed with pronunciation shift
+# PrefixAddDrop   :  same word, one has prefix e.g. preposition form "y-"
+# SuffixAddDrop   :  same word, one has suffix e.g. definite article "-n"
+$REFC = [ 0, 1, 1,  0.25, 0.5, 0.5, 0.5 ];   # mid-word: no pre/suffix
 
-    @Prefixes = qw( զ ց յ );
-    @Suffixes = qw( ն ս դ ք );
-}
+%VocalicEquivalence = (
+    'բ' => [ 'պ' ],
+    'գ' => [ 'ք', 'կ' ],
+    'դ' => [ 'տ' ],
+    'ե' => [ 'է' ],
+    'է' => [ 'ե' ],
+    'թ' => [ 'տ' ],
+    'լ' => [ 'ղ' ],
+    'կ' => [ 'գ', 'ք' ],
+    'ղ' => [ 'լ' ],
+    'ո' => [ 'օ' ],
+    'պ' => [ 'բ', 'փ' ],
+    'ռ' => [ 'ր' ],
+    'վ' => [ 'ւ' ],
+    'տ' => [ 'դ', 'թ'],
+    'ր' => [ 'ռ' ],
+    'ւ' => [ 'վ' ],
+    'փ' => [ 'պ', 'ֆ' ],
+    'ք' => [ 'գ', 'կ' ],
+    'օ' => [ 'ո' ],
+    'ֆ' => [ 'փ' ],
+    );
+
+@Prefixes = qw( զ ց յ );
+@Suffixes = qw( ն ս դ ք );
 
 sub _am_weight
 {
@@ -169,30 +141,46 @@ sub _am_weight
 	    return $refc->[2];
 	}
     }
-
-    return $value;
 }
 
 # Annoyingly, I need to copy this whole damn thing because I need to change
 # the refc mid-stream.
-sub distance {
-    my ($refc,$s,@t)=@_;
 
-    # Set up defaults.
-    my $refc_start = $REFC_start;
-    my $refc_mid = $REFC;
-    my $refc_end = $REFC_end;
-    
+=head1 SUBROUTINES
+
+=over 
+
+=item B<distance>( \@editweight, $string1, $string2, [ .. $stringN ] );
+
+=item B<distance>( $string1, $string2, [ .. $stringN ] );
+
+The main exported function of this module.  Takes a list of two or
+more strings and returns the edit distance between the first string
+and each of the others.  The "edit_distances" array is an optional
+first argument, with which users may override the default edit
+penalties, as described above.
+
+=cut
+
+sub distance {
+    my ($refcarg,$s,@t)=@_;
+
+    # The refc values are as documented above:
+    # 0. x,x; 1. x,''; 2. x,y; 3. x,X; 4. d,t; 5. x,zx; 6. x,xn
+    # 6 only applies at beginnings of words, and 7 only applies at
+    # ends.
+
+    my $refc = [];
     if (!@t) {
 	# Two args...
-	if (ref($refc) ne "ARRAY") {
+	if (ref($refcarg) ne "ARRAY") {
 	    # the first of which is a string...
 	    if (ref($s) ne "ARRAY") {
 		# ...and the second of which is a string.
 		# Use default refc set.
 		$t[0]=$s;
-		$s=$refc;
-		$refc=$refc_mid;
+		$s=$refcarg;
+		push( @$refc, @$REFC );
 	    } else {
 		# ...one of which is an array.  Croak.
 		require Carp;
@@ -203,30 +191,36 @@ sub distance {
 	    require Carp;
 	    Carp::croak("Text::WagnerFischer: second string is needed");
 	}
-    } elsif (ref($refc) ne "ARRAY") {
+    } elsif (ref($refcarg) ne "ARRAY") {
 	# Three or more args, all strings.
 	# Use default refc set.
-	
 	unshift @t,$s;
-	$s=$refc;
-	$refc=$refc_mid;
+	$s=$refcarg;
+	push( @$refc, @$REFC );
     } else {
 	# A refc array and (presumably) some strings.
-	# Do we have one or three refcs?
-	if( ref( $refc->[0] ) ne "ARRAY" ) {
-	    # We have one.  Use only this one.
-	    $refc_start = $refc_end = $refc_mid = $refc;
-	} elsif ( scalar( @$refc ) == 3 ) {
-	    $refc_start = $refc->[0];
-	    $refc_mid = $refc->[1];
-	    $refc_end = $refc->[2];
-	} else {
-	    require Carp;
-	    Carp::croak( "Text::WagnerFischer::Armenian: must pass either one or three refc arrays" );
-	}
-	$refc = $refc_mid;
-    }
+	# Copy the passed array into our own array, because
+	# we are going to mutate our copy.
+	push( @$refc, @$refcarg );
+    }    
     
+    # Set up the refc arrays in three different formats - one for word
+    # beginnings, one for word ends, and one for everything else.
+    my( $refc_start, $refc_end ) = ( [], [] );
+    push( @$refc_start, @$refc );
+    # Count suffixes as normal add/del.
+    $refc_start->[6] = $refc->[1];
+    push( @$refc_end, @$refc );
+    $refc_end->[5] = $refc->[1];
+
+    # Now alter our main refc, which should no longer
+    # care about prefixes or suffixes.
+    $refc->[5] = $refc->[1];
+    $refc->[6] = $refc->[1];
+	
+
+    # binmode STDERR, ":utf8"; # for debugging
+    # Start the real string comparison.
     my $n=length($s);
     my @result;
     
@@ -244,9 +238,9 @@ sub distance {
 	# Cannot assume that blank vs. 1st letter is "add".  Might
 	# be "prefix."
 	my $f_i = substr($s,0,1);
-	foreach my $i (1 .. $n) {$d[$i][0]=$i*_am_weight('-',$f_i,$refc_start);}
+	foreach my $i (1 .. $n) {$d[$i][0]=$i*&_am_weight('-',$f_i,$refc_start);}
 	my $f_j = substr($t,0,1);
-	foreach my $j (1 .. $m) {$d[0][$j]=$j*_am_weight($f_j,'-',$refc_start);}
+	foreach my $j (1 .. $m) {$d[0][$j]=$j*&_am_weight($f_j,'-',$refc_start);}
 	
 	foreach my $i (1 .. $n) {
 	    my $s_i=substr($s,$i-1,1);
@@ -255,7 +249,7 @@ sub distance {
 		$refc = $refc_end if( $i == $n || $j == $m );
 		my $t_i=substr($t,$j-1,1);
 		
-		$d[$i][$j]=_min($d[$i-1][$j]+_am_weight($s_i,'-',$refc),
+		$d[$i][$j]=Text::WagnerFischer::_min($d[$i-1][$j]+_am_weight($s_i,'-',$refc),
 				$d[$i][$j-1]+_am_weight('-',$t_i,$refc),
 				$d[$i-1][$j-1]+_am_weight($s_i,$t_i,$refc));
 	    }
@@ -280,6 +274,15 @@ sub distance {
 }
   
 
+=item B<am_lc>( $char )
+
+A small utility function, useful for Armenian text.  Returns the
+lowercase version of the character passed in.
+
+=back
+
+=cut
+
 sub am_lc {
     my $char = shift;
     # Is it in the uppercase Armenian range?
@@ -290,5 +293,25 @@ sub am_lc {
     }
     return $char;
 }
+
+=head1 LIMITATIONS
+
+There are many cases of Armenian word equivalence that are not
+perfectly handled by this; it is meant to be a rough heuristic for
+comparing transcriptions of handwriting.  In particular, multi-letter
+suffixes, and some orthographic equivalence e.g "o" -> "aw", are not
+handled at all.
+
+=head1 LICENSE
+
+This package is free software and is provided "as is" without express
+or implied warranty.  You can redistribute it and/or modify it under 
+the same terms as Perl itself.
+
+=head1 AUTHOR
+
+Tara L Andrews, L<aurum@cpan.org>
+
+=cut
 
 1;

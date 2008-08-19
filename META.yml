@@ -1,5 +1,5 @@
 ---
-abstract: 'a subclass of Text::WagnerFischer for Armenian-language strings'
+abstract: 'a variation on Text::WagnerFischer for Armenian-language strings'
 author:
   - 'Tara L Andrews <aurum@cpan.org>'
 distribution_type: module
@@ -16,5 +16,5 @@ no_index:
     - t
 requires:
   Text::WagnerFischer: 0
-  perl: "\x05\x08\x03"
-version: 0.01
+  perl: 5.008003
+version: 0.02
