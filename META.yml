@@ -17,4 +17,4 @@ no_index:
 requires:
   Text::WagnerFischer: 0
   perl: 5.008003
-version: 0.02
+version: 0.03

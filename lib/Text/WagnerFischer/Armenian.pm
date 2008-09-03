@@ -61,7 +61,7 @@ use utf8;
 
 my( %VocalicEquivalence, @Prefixes, @Suffixes, $REFC );
 
-our $VERSION = "0.02";
+our $VERSION = "0.03";
 our @EXPORT_OK = qw( &distance &am_lc );
 
 # Set new default costs:
@@ -83,6 +83,7 @@ $REFC = [ 0, 1, 1,  0.25, 0.5, 0.5, 0.5 ];   # mid-word: no pre/suffix
     'լ' => [ 'ղ' ],
     'կ' => [ 'գ', 'ք' ],
     'ղ' => [ 'լ' ],
+    'յ' => [ '՛' ],      # Only in manuscripts
     'ո' => [ 'օ' ],
     'պ' => [ 'բ', 'փ' ],
     'ռ' => [ 'ր' ],
@@ -94,6 +95,7 @@ $REFC = [ 0, 1, 1,  0.25, 0.5, 0.5, 0.5 ];   # mid-word: no pre/suffix
     'ք' => [ 'գ', 'կ' ],
     'օ' => [ 'ո' ],
     'ֆ' => [ 'փ' ],
+    '՛' => [ 'յ' ],      # Only in manuscripts
     );
 
 @Prefixes = qw( զ ց յ );
